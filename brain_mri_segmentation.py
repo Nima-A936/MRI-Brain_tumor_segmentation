@@ -37,12 +37,23 @@ class BrainMRIDataset(Dataset):
 
     def __getitem__(self, idx):
         image = plt.imread(self.image_paths[idx])
-        mask = None
-        if self.mask_paths[idx] is not None:
+
+        # Handle the mask: If no mask is available (during inference), just return None
+        if self.mask_paths[idx] is not None and os.path.exists(self.mask_paths[idx]):
             mask = plt.imread(self.mask_paths[idx])
-        augmented = self.transform(image=image, mask=mask)
-        image = augmented['image']
-        mask = augmented['mask'] if mask is not None else None
+        else:
+            mask = None  # For inference, we don't have a mask
+
+        # Pass None for the mask if it doesn't exist
+        if mask is not None:
+            augmented = self.transform(image=image, mask=mask)
+            image = augmented['image']
+            mask = augmented['mask']
+        else:
+            augmented = self.transform(image=image)
+            image = augmented['image']
+            mask = None  # No mask available during inference
+
         return image, mask
 
 # Function to load the saved model
@@ -57,24 +68,11 @@ def load_model(model_path='best_model.pth'):
     model.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
     return model
 
-# Function to validate the model on the test dataset
-def validate_one_epoch(model, test_loader, criterion, device):
-    model.eval()
-    test_loss = 0.0
-    with torch.no_grad():
-        for image, mask in test_loader:
-            image, mask = image.to(device), mask.to(device)
-            outputs = model(image)
-            loss = criterion(outputs, mask)
-            test_loss += loss.item() * image.size(0)
-    test_loss /= len(test_loader.dataset)
-    return test_loss
-
 # Function to plot the result for a single image
 def plot_single_result(model, test_loader, device):
     model.eval()
     for images, masks in test_loader:
-        images, masks = images.to(device), masks.to(device)
+        images = images.to(device)
         outputs = model(images)
         pred = outputs[0].squeeze().detach().cpu().numpy()
         pred_binary = (pred > 0.5).astype(np.uint8)  # Binary prediction (threshold 0.5)
@@ -112,15 +110,9 @@ def run_single_image_inference(image_path, model_path='model/best_model.pth'):
     model = load_model(model_path)
     model = model.to(device)
 
-    # Load the single image as a dataset
+    # Load the single image as a dataset (without masks, since it's inference)
     test_dataset = BrainMRIDataset([image_path])  # Pass the image path as a list
     test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False)
 
-    # Define loss criterion (optional, in case you want to evaluate loss)
-    criterion = DiceLoss()
-
-    # Optional: Evaluate the model on the single image (if you need the loss value)
-    # test_loss = validate_one_epoch(model, test_loader, criterion, device)
-
-    # Plot prediction and ground truth for the single image
+    # Run inference and plot the result for the single image
     plot_single_result(model, test_loader, device)
