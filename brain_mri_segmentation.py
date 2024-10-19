@@ -22,11 +22,11 @@ class DiceLoss(nn.Module):
         
         return 1 - dice
 
-# Define Dataset class
+# Define Dataset class to work with a single image
 class BrainMRIDataset(Dataset):
-    def __init__(self, image_dir, mask_dir):
-        self.image_paths = sorted([os.path.join(image_dir, fname) for fname in os.listdir(image_dir)])
-        self.mask_paths = sorted([os.path.join(mask_dir, fname) for fname in os.listdir(mask_dir)])
+    def __init__(self, image_paths, mask_paths=None):
+        self.image_paths = image_paths  # A list containing the single image path
+        self.mask_paths = mask_paths if mask_paths is not None else [None] * len(image_paths)
         self.transform = A.Compose([
             A.Resize(128, 128),
             ToTensorV2()
@@ -37,10 +37,12 @@ class BrainMRIDataset(Dataset):
 
     def __getitem__(self, idx):
         image = plt.imread(self.image_paths[idx])
-        mask = plt.imread(self.mask_paths[idx])
+        mask = None
+        if self.mask_paths[idx] is not None:
+            mask = plt.imread(self.mask_paths[idx])
         augmented = self.transform(image=image, mask=mask)
         image = augmented['image']
-        mask = augmented['mask']
+        mask = augmented['mask'] if mask is not None else None
         return image, mask
 
 # Function to load the saved model
@@ -101,24 +103,24 @@ def plot_single_result(model, test_loader, device):
         plt.show()
         break  # Break after showing the first image
 
-# Main function to run the entire process
-def run_single_image_inference(image_dir, mask_dir, model_path='model/best_model.pth'):
+# Main function to run the entire process on a single uploaded image
+def run_single_image_inference(image_path, model_path='model/best_model.pth'):
     # Set up the device
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     
     # Load the model
     model = load_model(model_path)
     model = model.to(device)
-    
-    # Load test dataset
-    test_dataset = BrainMRIDataset(image_dir, mask_dir)
-    test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False)  # Fetch one image at a time
 
-    # Define loss criterion
+    # Load the single image as a dataset
+    test_dataset = BrainMRIDataset([image_path])  # Pass the image path as a list
+    test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False)
+
+    # Define loss criterion (optional, in case you want to evaluate loss)
     criterion = DiceLoss()
 
-    # Evaluate the model on the test set (optional)
-    test_loss = validate_one_epoch(model, test_loader, criterion, device)
+    # Optional: Evaluate the model on the single image (if you need the loss value)
+    # test_loss = validate_one_epoch(model, test_loader, criterion, device)
 
-    # Plot prediction and ground truth for a single image
+    # Plot prediction and ground truth for the single image
     plot_single_result(model, test_loader, device)
