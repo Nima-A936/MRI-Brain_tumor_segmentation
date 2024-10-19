@@ -1,4 +1,3 @@
-# brain_mri_segmentation.py
 import os
 import torch
 import torch.nn as nn
@@ -52,7 +51,8 @@ def load_model(model_path='best_model.pth'):
         classes=1,                  # Binary segmentation (1 class)
         activation="sigmoid"        # Sigmoid activation
     )
-    model.load_state_dict(torch.load(model_path))
+    # Ensure the model is loaded onto the CPU if CUDA is not available
+    model.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
     return model
 
 # Function to validate the model on the test dataset
@@ -68,7 +68,6 @@ def validate_one_epoch(model, test_loader, criterion, device):
     test_loss /= len(test_loader.dataset)
     return test_loss
 
-# Function to plot the results
 # Function to plot the result for a single image
 def plot_single_result(model, test_loader, device):
     model.eval()
@@ -85,7 +84,7 @@ def plot_single_result(model, test_loader, device):
         fig, axs = plt.subplots(1, 3, figsize=(15, 5))
         axs[0].set_title('Image')
         axs[1].set_title('Prediction')
-        axs[2].set_title('combined')
+        axs[2].set_title('Combined')
 
         # Single image
         image = images[0].squeeze().cpu().numpy()
