@@ -5,7 +5,7 @@ from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image
-import brain_mri_segmentation as mri
+import brain_mri_segmentation as mri  # Make sure this has the model and utilities
 from brain_mri_segmentation import BrainMRIDataset, DiceLoss
 import base64
 
@@ -58,12 +58,23 @@ if uploaded_file is not None:
 
     # Load the model (map to CPU if needed)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model = torch.load(model_path, map_location=device)
+
+    # Define your model architecture (adjust this to match your actual model)
+    # Replace `YourModelArchitecture` with the actual model class
+    model = mri.YourModelArchitecture()  # Ensure this class is defined in brain_mri_segmentation
+
+    # Load the saved state dictionary
+    model_state_dict = torch.load(model_path, map_location=device)
+
+    # Load the state dict into the model
+    model.load_state_dict(model_state_dict)
+
+    # Set the model to evaluation mode
     model.eval()
 
     # Run inference on the uploaded image
     with st.spinner("Segmenting the brain..."):
-        segmented_image = mri.run_single_image_inference(temp_image_save_path, model)
+        segmented_image = mri.run_single_image_inference(temp_image_save_path, model, device)
 
     # Display the original uploaded image
     st.image(image, caption="Uploaded MRI Image", use_column_width=True)
