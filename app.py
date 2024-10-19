@@ -37,27 +37,17 @@ st.write("""
 
 # If a file is uploaded, proceed with inference
 if uploaded_file is not None:
-    # Load the image using PIL
+    # Load the image using PIL and save it to a temporary location for inference
     image = Image.open(uploaded_file).convert("L")  # Convert to grayscale if not already
 
-    # Save the uploaded file to a temporary directory (for inference)
+    # Save the uploaded image to a temporary file for inference
     temp_image_path = "temp_uploaded_image.png"
     image.save(temp_image_path)
 
-    # Define paths
-    image_dir = "data/new"  # Directory where the uploaded image will be saved for inference
-    mask_dir = "data/masks"  # You can set it to None or use an actual directory if needed for testing
-    model_path = "model/best_model.pth"  # Path to your trained model weights
-
-    # Create directories if they don't exist
-    os.makedirs(image_dir, exist_ok=True)
-    temp_image_save_path = os.path.join(image_dir, "uploaded_image.png")
-    image.save(temp_image_save_path)
-
     # Run inference on the uploaded image
     with st.spinner("Segmenting the brain..."):
-        # Running single image inference using the provided module
-        mri.run_single_image_inference(image_dir, mask_dir, model_path)
+        # Use the uploaded image path directly
+        mri.run_single_image_inference(temp_image_path)
 
     # Display the original uploaded image
     st.image(image, caption="Uploaded MRI Image", use_column_width=True)
