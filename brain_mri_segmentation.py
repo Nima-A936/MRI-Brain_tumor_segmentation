@@ -38,23 +38,22 @@ class BrainMRIDataset(Dataset):
     def __getitem__(self, idx):
         image = plt.imread(self.image_paths[idx])
 
-        # Handle the mask: If no mask is available (during inference), just return None
+        # Handle the mask: If no mask is available (during inference), return just the image
         if self.mask_paths[idx] is not None and os.path.exists(self.mask_paths[idx]):
             mask = plt.imread(self.mask_paths[idx])
         else:
             mask = None  # For inference, we don't have a mask
 
-        # Pass None for the mask if it doesn't exist
+        # Apply transforms
         if mask is not None:
             augmented = self.transform(image=image, mask=mask)
             image = augmented['image']
             mask = augmented['mask']
+            return image, mask
         else:
             augmented = self.transform(image=image)
             image = augmented['image']
-            mask = None  # No mask available during inference
-
-        return image, mask
+            return image  # Only return the image for inference
 
 # Function to load the saved model
 def load_model(model_path='best_model.pth'):
@@ -71,7 +70,7 @@ def load_model(model_path='best_model.pth'):
 # Function to plot the result for a single image
 def plot_single_result(model, test_loader, device):
     model.eval()
-    for images, masks in test_loader:
+    for images in test_loader:  # Only images during inference
         images = images.to(device)
         outputs = model(images)
         pred = outputs[0].squeeze().detach().cpu().numpy()
