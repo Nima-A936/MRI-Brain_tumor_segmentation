@@ -1,5 +1,5 @@
 streamlit
-torch==2.2.2
+torch
 segmentation-models-pytorch
 albumentations
 matplotlib
