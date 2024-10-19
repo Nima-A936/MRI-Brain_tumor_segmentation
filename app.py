@@ -1,13 +1,10 @@
 import streamlit as st
 import os
 import torch
-from torch.utils.data import DataLoader
-import matplotlib.pyplot as plt
-import numpy as np
 from PIL import Image
-import brain_mri_segmentation as mri  # Make sure this has the model and utilities
-from brain_mri_segmentation import BrainMRIDataset, DiceLoss
+import brain_mri_segmentation as mri  # Import your segmentation module
 import base64
+import matplotlib.pyplot as plt
 
 # Function to set background image using CSS and base64 encoding
 def set_background(image_file):
@@ -49,6 +46,7 @@ if uploaded_file is not None:
 
     # Define paths
     image_dir = "data/new"  # Directory where the uploaded image will be saved for inference
+    mask_dir = "data/masks"  # You can set it to None or use an actual directory if needed for testing
     model_path = "model/best_model.pth"  # Path to your trained model weights
 
     # Create directories if they don't exist
@@ -56,38 +54,14 @@ if uploaded_file is not None:
     temp_image_save_path = os.path.join(image_dir, "uploaded_image.png")
     image.save(temp_image_save_path)
 
-    # Load the model (map to CPU if needed)
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
-    # Define your model architecture (adjust this to match your actual model)
-    # Replace `YourModelArchitecture` with the actual model class
-    model = mri.YourModelArchitecture()  # Ensure this class is defined in brain_mri_segmentation
-
-    # Use torch.load with map_location to ensure compatibility with CPU
-    model_state_dict = torch.load(model_path, map_location=torch.device('cpu'))
-
-    # Load the state dict into the model
-    model.load_state_dict(model_state_dict)
-
-    # Set the model to evaluation mode and move it to the correct device
-    model.to(device)
-    model.eval()
-
     # Run inference on the uploaded image
     with st.spinner("Segmenting the brain..."):
-        segmented_image = mri.run_single_image_inference(temp_image_save_path, model, device)
+        # Running single image inference using the provided module
+        mri.run_single_image_inference(image_dir, mask_dir, model_path)
 
     # Display the original uploaded image
     st.image(image, caption="Uploaded MRI Image", use_column_width=True)
 
-    # Display the segmented output (from model inference)
+    # Since the plotting happens inside `plot_single_result`, we use Streamlit's pyplot to display it
     st.write("Segmentation complete. Below is the segmented output.")
-
-    # Display the segmented output
-    if segmented_image is not None:
-        plt.figure(figsize=(6, 6))
-        plt.imshow(segmented_image, cmap='gray')
-        plt.axis('off')
-        st.pyplot(plt)
-    else:
-        st.error("Segmentation failed. Please try again with a different image.")
+    st.pyplot(plt)  # Will display the plot created by plot_single_result
